@@ -44,6 +44,8 @@ resource "azurerm_windows_web_app" "web_app" {
     "MicrosoftAppTenantId"         = azurerm_user_assigned_identity.user_assigned_managed_identity.tenant_id
   }
 
+  virtual_network_subnet_id = azurerm_subnet.app_service_integration_subnet.id
+
   identity {
     type = "UserAssigned"
     identity_ids = [
@@ -115,6 +117,14 @@ resource "azurerm_subnet" "app_service_integration_subnet" {
   resource_group_name  = azurerm_resource_group.resource_group.name
   virtual_network_name = azurerm_virtual_network.virtual_network.name
   address_prefixes     = ["10.0.3.0/24"]
+  
+  delegation {
+    name = "delegation"
+    service_delegation {
+      name    = "Microsoft.Web/serverFarms"
+      actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
+    }
+  }
 }
 
 resource "azurerm_public_ip" "bastion_public_ip" {
@@ -168,7 +178,7 @@ resource "azurerm_network_interface" "virtual_machine_nic" {
   }
 }
 
-resource "azurerm_network_interface_security_group_association" "example" {
+resource "azurerm_network_interface_security_group_association" "virtual_machine_nic_nsg_association" {
   network_interface_id      = azurerm_network_interface.virtual_machine_nic.id
   network_security_group_id = azurerm_network_security_group.virtual_machine_nsg.id
 }
@@ -193,5 +203,37 @@ resource "azurerm_windows_virtual_machine" "main" {
     offer     = "WindowsServer"
     sku       = "2022-datacenter-azure-edition"
     version   = "latest"
+  }
+}
+
+resource "azurerm_private_dns_zone" "sites_private_dns_zone" {
+  name                = "privatelink.azurewebsites.net"
+  resource_group_name = azurerm_resource_group.resource_group.name
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "sites_private_link" {
+  name                  = "${var.prefix}sitesprivatelink"
+  resource_group_name   = azurerm_resource_group.resource_group.name
+  private_dns_zone_name = azurerm_private_dns_zone.sites_private_dns_zone.name
+  virtual_network_id    = azurerm_virtual_network.virtual_network.id
+}
+
+resource "azurerm_private_endpoint" "sites_private_endpoint" {
+  name                = "${var.prefix}sitesprivateendpoint"
+  resource_group_name = azurerm_resource_group.resource_group.name
+  location            = azurerm_resource_group.resource_group.location
+
+  subnet_id = azurerm_subnet.private_endpoint_subnet.id
+
+  private_service_connection {
+    name                           = "sitesprivateserviceconnection"
+    private_connection_resource_id = azurerm_windows_web_app.web_app.id
+    subresource_names              = ["sites"]
+    is_manual_connection           = false
+  }
+
+  private_dns_zone_group {
+    name                 = "sitesprivatednszonegroup"
+    private_dns_zone_ids = [azurerm_private_dns_zone.sites_private_dns_zone.id]
   }
 }
