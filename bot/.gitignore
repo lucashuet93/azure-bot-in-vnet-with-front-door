@@ -6,6 +6,9 @@
 # dotenv files
 .env
 
+# deployment zip file
+bot-deployment.zip
+
 # User-specific files
 *.rsuser
 *.suo
