@@ -70,7 +70,7 @@ resource "azurerm_bot_service_azure_bot" "azure_bot_service" {
   resource_group_name     = azurerm_resource_group.resource_group.name
   location                = "global"
   sku                     = "S1"
-  endpoint                = "https://${azurerm_windows_web_app.web_app.default_hostname}/api/messages"
+  endpoint                = "https://${azurerm_cdn_frontdoor_endpoint.frontdoor_endpoint.host_name}/api/messages"
   microsoft_app_id        = azurerm_user_assigned_identity.user_assigned_managed_identity.client_id
   microsoft_app_tenant_id = azurerm_user_assigned_identity.user_assigned_managed_identity.tenant_id
   microsoft_app_msi_id    = azurerm_user_assigned_identity.user_assigned_managed_identity.id
@@ -117,7 +117,7 @@ resource "azurerm_subnet" "app_service_integration_subnet" {
   resource_group_name  = azurerm_resource_group.resource_group.name
   virtual_network_name = azurerm_virtual_network.virtual_network.name
   address_prefixes     = ["10.0.3.0/24"]
-  
+
   delegation {
     name = "delegation"
     service_delegation {
@@ -166,7 +166,7 @@ resource "azurerm_network_security_group" "virtual_machine_nsg" {
 }
 
 resource "azurerm_network_interface" "virtual_machine_nic" {
-  name                           = "${var.prefix}-nic"
+  name                           = "${var.prefix}nic"
   resource_group_name            = azurerm_resource_group.resource_group.name
   location                       = azurerm_resource_group.resource_group.location
   accelerated_networking_enabled = true
@@ -236,4 +236,65 @@ resource "azurerm_private_endpoint" "sites_private_endpoint" {
     name                 = "sitesprivatednszonegroup"
     private_dns_zone_ids = [azurerm_private_dns_zone.sites_private_dns_zone.id]
   }
+}
+
+resource "azurerm_cdn_frontdoor_profile" "frontdoor" {
+  name                = "${var.prefix}frontdoor"
+  resource_group_name = azurerm_resource_group.resource_group.name
+  sku_name            = "Premium_AzureFrontDoor"
+}
+
+resource "azurerm_cdn_frontdoor_endpoint" "frontdoor_endpoint" {
+  name                     = "${var.prefix}appserviceendpoint"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.frontdoor.id
+}
+
+resource "azurerm_cdn_frontdoor_origin_group" "frontdoor_origin_group" {
+  name                     = "${var.prefix}appserviceorigingroup"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.frontdoor.id
+
+  load_balancing {
+    sample_size                 = 4
+    successful_samples_required = 3
+  }
+
+  health_probe {
+    path                = "/"
+    request_type        = "HEAD"
+    protocol            = "Https"
+    interval_in_seconds = 100
+  }
+}
+
+resource "azurerm_cdn_frontdoor_origin" "frontdoor_origin" {
+  name                           = "${var.prefix}appserviceorigin"
+  cdn_frontdoor_origin_group_id  = azurerm_cdn_frontdoor_origin_group.frontdoor_origin_group.id
+  enabled                        = true
+  host_name                      = azurerm_windows_web_app.web_app.default_hostname
+  http_port                      = 80
+  https_port                     = 443
+  origin_host_header             = azurerm_windows_web_app.web_app.default_hostname
+  priority                       = 1
+  weight                         = 1000
+  certificate_name_check_enabled = true
+
+  private_link {
+    private_link_target_id = azurerm_windows_web_app.web_app.id
+    target_type            = "sites"
+    location               = azurerm_resource_group.resource_group.location
+    request_message        = "Request made via Terraform"
+  }
+}
+
+resource "azurerm_cdn_frontdoor_route" "frontdoor_route" {
+  name                          = "${var.prefix}appserviceroute"
+  cdn_frontdoor_endpoint_id     = azurerm_cdn_frontdoor_endpoint.frontdoor_endpoint.id
+  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.frontdoor_origin_group.id
+  cdn_frontdoor_origin_ids      = [azurerm_cdn_frontdoor_origin.frontdoor_origin.id]
+
+  supported_protocols    = ["Http", "Https"]
+  patterns_to_match      = ["/*"]
+  forwarding_protocol    = "MatchRequest"
+  link_to_default_domain = true
+  https_redirect_enabled = true
 }
