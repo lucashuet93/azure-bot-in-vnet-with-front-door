@@ -183,7 +183,7 @@ resource "azurerm_network_interface_security_group_association" "virtual_machine
   network_security_group_id = azurerm_network_security_group.virtual_machine_nsg.id
 }
 
-resource "azurerm_windows_virtual_machine" "main" {
+resource "azurerm_windows_virtual_machine" "virtual_machine" {
   name                  = "${var.prefix}vm"
   admin_username        = var.admin_username
   admin_password        = var.admin_password
