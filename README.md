@@ -4,23 +4,10 @@
 
 ### Deploying the Base Infrastructure
 
-- Navigate to the `./infra/base` directory
-- Initialize the project - `terraform init`
-- Update the variable values in `terraform.tfvars`
-- Deploy the infrastructure - `terraform apply --var-file="terraform.tfvars"`
-
-### Deploying the Bot Code
-
-- Navigate to the root directory
-- Add the User Assigned Managed Identity properties from the terraform outputs to the `./bot/EchoBot/appsettings.json` file
-- Zip up the contents excluding the .sln file inside `./bot/EchoBot`, naming the file `bot-deployment.zip`
-- Deploy the code to the Azure App Service - `az webapp deploy --resource-group ${RG_NAME} --name ${APP_SERVICE_NAME} --src-path './bot/EchoBot/bot-deployment.zip'`
-
-### Deploying the VNet Integration Infrastructure
- 
-- List the App Service's private endpoint requests - `az network private-endpoint-connection list -g ${RG_NAME} -n ${APP_SERVICE_NAME} --type Microsoft.Web/sites`
-- Approve the private endpoint request from front door on the app service - `az network private-endpoint-connection approve -g ${RG_NAME} -n ${GUID_NAME_FROM_LIST_COMMAND_OUTPUT} --resource-name ${APP_SERVICE_NAME} --type Microsoft.Web/sites --description "Request made via Terraform"`
-- Only allow traffic from selected networks on the app service - `az webapp config access-restriction set -g ${RG_NAME} -n ${APP_SERVICE_NAME} --default-action Deny --use-same-restrictions-for-scm-site true`
+- Rename `sample.env` to `.env` and add values accordingly
+- Open the root directory in bash
+- Login to Azure - `az login`
+- Run the deployment script - `./scripts/deploy.sh`
 
 ## Testing the Solution
 
