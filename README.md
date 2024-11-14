@@ -6,11 +6,11 @@ The repository enables easy deployment of an Azure Bot (basic EchoBot) into a Vi
 
 The architecture includes the following components:
 
-Virtual Network that uses space 10.0.0.0/16 contains 4 subnets:
-    - DefaultSubnet (10.0.0.0/24)
-    - AzureBastionSubnet (10.0.1.0/24)
-    - PrivateEndpointSubnet (10.0.2.0/24)
-    - AppServiceIntegrationSubnet (10.0.3.0/24)
+- Virtual Network that uses space `10.0.0.0/16` contains 4 subnets:
+  - DefaultSubnet (`10.0.0.0/24`)
+  - AzureBastionSubnet (`10.0.1.0/24`)
+  - PrivateEndpointSubnet (`10.0.2.0/24`)
+  - AppServiceIntegrationSubnet (`10.0.3.0/24`)
 - A VM and Bastion host serving as a jumpbox for secure operations within the virtual network.
 - A virtual network integrated App Service running a basic Echo Bot with associated App Service Plan.
 - A Private Endpoint that enables private network connectivity to the App Service.
@@ -18,7 +18,7 @@ Virtual Network that uses space 10.0.0.0/16 contains 4 subnets:
 - A Front Door with Private Link enabled connection to the App Service.
 - A Bot Channel Registration configured with Front Door's messaging endpoint.
 
-## Deployment
+## Deploying the Solution
 
 ### Update Environment Variables
 
