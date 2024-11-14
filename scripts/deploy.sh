@@ -66,7 +66,8 @@ echo "Approving private endpoint connection request from Front Door to the App S
 ALL_PRIVATE_ENDPOINT_CONNECTIONS=$(az network private-endpoint-connection list -g $RESOURCE_GROUP_NAME -n $APP_SERVICE_NAME --type Microsoft.Web/sites)
 PENDING_CONNECTIONS=$(echo $ALL_PRIVATE_ENDPOINT_CONNECTIONS | jq -r '.[] | select(.properties.privateLinkServiceConnectionState.description == "Request made via Terraform" and .properties.privateLinkServiceConnectionState.status == "Pending") | .name')
 for PENDING_CONNECTION in $PENDING_CONNECTIONS; do
-  az network private-endpoint-connection approve -g $RESOURCE_GROUP_NAME -n $PENDING_CONNECTION --resource-name $APP_SERVICE_NAME --type Microsoft.Web/sites --description "Request made via Terraform"
+  PENDING_CONNECTION=$(echo $PENDING_CONNECTION | tr -d '\r')
+  az network private-endpoint-connection approve -g "$RESOURCE_GROUP_NAME" -n "$PENDING_CONNECTION" --resource-name "$APP_SERVICE_NAME" --type Microsoft.Web/sites --description "Request made via Terraform"
 done
 
 echo "Restricting network access to the App Service"
